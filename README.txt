@@ -9,11 +9,10 @@ sssClient.statusCodes.subscriptionText {}
 
 client
 
-client.connect: function connect(callback(userSubscription)) << -- add a error callback on fail
+client.connect: function connect(callback(userSubscription))
 client.subscribe: function subscribe(channel, query, callback(err, subscription)
 client.client.getStatus: function getStatus()
 client.onTell: function onTell(callback(msg))
-client.onBroadcast: function onBroadcast(topic, callback(msg)) // to be added (maybe)
 client.onError: function onError(callback(error))
 client.onReconnect: function onReconnect(callback())
 client.onDrop: function onDrop(callback()
@@ -21,7 +20,6 @@ client.onStatusChange: function onStatusChange(callback(status, oldStatus))
 client.onFail: function onFail(callback()
 client.ask: function ask(topic, msg, callback(err, msg))
 client.tell: function tell(topic, msg, callback(err))
-client.onBoot: function onBoot(msg) // to be added
 
 subscription
 
@@ -30,7 +28,6 @@ subscription.on: function on(topic, callback(msg))
 subscription.unsubscribe: function unsubscribe()
 subscription.onStatusChange: function onStatusChange(callback(status, oldStatus))
 subscription.onError: function onError(callback(error))
-subscription.onBoot: function onBoot(msg) // to be added
 
  --- sssServer ---
 
@@ -43,12 +40,9 @@ server.connect(callback(err))
 server.onSocket(callback(socket))
 server.publish: function publish(channelName, topic, msg)
 server.publishToMany: function publishToMany(channelNames, topic, msg)
-server.broadcast: function broadcast(msg) //to be added (maybe)
 server.onChannelOpen: function onChannelOpen(callback())
 server.onChannelClose: function onChannelClose(callback())
 server.onPublish: function onPublish(callback())
-server.onError: function onError(callback(error)) // to be added
-server.onFail: function onFail(callback()) // to be added
 
 channel
 
@@ -56,7 +50,6 @@ channel.sockets: [array of socket objects]
 channel.locals: {}
 channel.name: name
 channel.publish: function publish(topic, msg)
-channel.boot(socket, msg) // to be added
 
 socket
 
@@ -69,4 +62,3 @@ socket.onClose: function onClose(callback)
 socket.onAsk: function onAsk(topic, callback)
 socket.onTell: function onTell(topic, callback)
 socket.tell: function tell(topic, msg)
-socket.boot: function boot(msg) // to be added
