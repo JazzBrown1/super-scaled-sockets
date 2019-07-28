@@ -13,7 +13,7 @@ module.exports = (scaler, callback) => {
     },
     broadcast: function broadcast(topic, msg, _callback) {
       const payload = {
-        sys: plCodes.BROADCAST, topic, msg
+        sys: plCodes.BROADCAST, topic, msg,
       };
       this._scaler.publish('_bc_', payload, (err, uid) => {
         if (_callback) _callback(err, uid);
