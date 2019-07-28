@@ -1,13 +1,14 @@
 {
   "name": "super-scaled-sockets",
-  "version": "0.0.1",
+  "version": "0.1.3",
   "description": "A library to easily enable mass scaled websocket applications with both request and subscriber services",
-  "main": "superScaledSockets.js",
+  "main": "src/superScaledSockets.js",
   "directories": {
     "example": "examples"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "buildDocs": "node_modules/.bin/jsdoc -c \"jsdoc/docs-docdash-config.json\""
   },
   "author": "Jazz Brown",
   "license": "ISC",
@@ -23,6 +24,8 @@
     "eslint-config-airbnb": "^17.0.0",
     "eslint-plugin-import": "^2.11.0",
     "eslint-plugin-jsx-a11y": "^6.0.3",
-    "eslint-plugin-react": "^7.7.0"
+    "eslint-plugin-react": "^7.7.0",
+    "jsdoc": "^3.6.2",
+    "docdash": "^1.1.1"
   }
 }

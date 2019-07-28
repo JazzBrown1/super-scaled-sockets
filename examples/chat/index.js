@@ -1,8 +1,8 @@
 /* eslint-disable no-param-reassign */
 // LIBRARIES
-const sss = require('../../superScaledSockets');
+const sss = require('../../src/superScaledSockets');
 
-// We take the port to run our server on from the first arguement in the node call
+// We take the port to run our server on from the first arguement in the node call in cl
 const port = process.argv[2] ? process.argv[2] : 443;
 
 // mongo connection info all properties are required
@@ -70,7 +70,7 @@ sss.scaler.mongoRedis.connect(mongoConnection, redisConnection, (scalerError, sc
     return;
   }
   console.log('scaler connection established');
-  // Make a server object
+  // Make a server instance
   const server = sss.server(scaler, prefs);
   // Open the sss connection
   server.connect((sssError) => {

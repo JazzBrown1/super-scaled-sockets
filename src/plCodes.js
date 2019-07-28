@@ -8,7 +8,8 @@ const plCodes = {
   RESPONSE: 7,
   FEED: 8,
   BOOT: 9,
-  BOOTCHANNEL: 10
+  BOOTCHANNEL: 10,
+  BROADCAST: 11
 };
 
 module.exports = plCodes;

@@ -1,5 +1,5 @@
-const util = {};
-util.Stash = function Stash() {
+const sssUtil = {};
+sssUtil.Stash = function Stash() {
   this._stash = {};
   this._id = 1;
   this.put = function put(val) {
@@ -32,7 +32,7 @@ util.Stash = function Stash() {
   };
 };
 
-util.arrayDelete = (arr, item) => {
+sssUtil.arrayDelete = (arr, item) => {
   if (!arr.isArray()) return false;
   const _index = arr.findIndex(_item => item === _item);
   if (_index !== -1) {
@@ -42,7 +42,7 @@ util.arrayDelete = (arr, item) => {
   return false;
 };
 
-util.asyncDoAll = (arr, callback, finished) => {
+sssUtil.asyncDoAll = (arr, callback, finished) => {
   let counter = 0;
   const done = () => {
     if (++counter === arr.length) finished();
@@ -52,7 +52,7 @@ util.asyncDoAll = (arr, callback, finished) => {
   });
 };
 
-util.asyncForEach = (arr, callback, finished) => {
+sssUtil.asyncForEach = (arr, callback, finished) => {
   let index = 0;
   const next = () => {
     if (index < arr.length) callback(arr[index], index++, next);
@@ -61,4 +61,4 @@ util.asyncForEach = (arr, callback, finished) => {
   next();
 };
 
-module.exports = util;
+module.exports = sssUtil;
