@@ -160,7 +160,6 @@ class Server {
   }
 
   connect(callback) {
-    console.log('jazz');
     const verifyClient = (info, done) => {
       info.req.cookies = cookie.parse(info.req.headers.cookie);
       this._prefs.sessionParser(info.req, (result, user) => {
