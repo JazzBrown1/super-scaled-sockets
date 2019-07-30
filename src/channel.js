@@ -1,3 +1,7 @@
+/** Class Instance that represents an open subscription channel on the server instance
+ *  @hideconstructor
+ */
+
 class Channel {
   constructor(server, firstSocket, name) {
     this._server = server;

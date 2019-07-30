@@ -16,7 +16,7 @@
         "destination": "jsdoc/out",
         "recurse": true,
         "verbose": true,
-        "readme": "./jsdoc/README.md"
+        "readme": "./README.md"
     },
   "templates": {
       "cleverLinks": false,
