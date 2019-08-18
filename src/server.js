@@ -18,7 +18,7 @@ const defaults = {
 };
 
 const applyPrefs = (prefs) => {
-  const _prefs = Object.assign({}, defaults);
+  const _prefs = { ...defaults };
   Object.keys(prefs).forEach((key) => {
     if (_prefs[key] !== undefined) _prefs[key] = prefs[key];
     else console.log('SuperScaledSockets', `Unknown preference name '${key}' passed to server class instance`);
@@ -73,7 +73,7 @@ class Server {
     if (this._channels[channelName]) {
       if (this._onUnsubscribe) this._onUnsubscribe(socket, this._channels[channelName]);
       if (this._channels[channelName].sockets.length > 1) {
-        const _index = this._channels[channelName].sockets.findIndex(_socket => _socket === socket);
+        const _index = this._channels[channelName].sockets.findIndex((_socket) => _socket === socket);
         if (_index !== -1) this._channels[channelName].sockets.splice(_index, 1);
       } else {
         if (this._onChannelClose) this._onChannelClose(this._channels[channelName]);
@@ -86,14 +86,14 @@ class Server {
   _unsubscribe(socket, channelName) {
     this._unsubscribeOnly(socket, channelName);
     if (socket.info.subs.length > 1) {
-      const _index = socket.info.subs.findIndex(channel => channel.name === channelName);
+      const _index = socket.info.subs.findIndex((channel) => channel.name === channelName);
       if (_index !== -1) socket.info.subs.splice(_index, 1);
     } else {
       socket.info.subs.length = 0;
     }
   }
 
-  _publishWithout(channelName, topic, msg, ws) {
+  _publishWithout(channelName, topic, msg, ws, callback) {
     const payload = {
       sys: plCodes.FEED,
       topic: topic,
@@ -101,6 +101,10 @@ class Server {
       channel: channelName
     };
     this._scaler.publish(channelName, payload, (error, uid) => {
+      if (error) {
+        callback(error, null);
+        return;
+      }
       payload.uid = uid;
       const jsonPl = JSON.stringify(payload);
       if (this._channels[channelName]) {
@@ -110,6 +114,7 @@ class Server {
           }
         });
       }
+      if (callback) callback(null, uid);
     });
   }
 
@@ -124,9 +129,11 @@ class Server {
 
   connect(callback) {
     const verifyClient = (info, done) => {
-      info.req.cookies = cookie.parse(info.req.headers.cookie);
-      this._prefs.sessionParser(info.req, (result, user) => {
+      info.req.cookies = info.req.headers.cookie ? cookie.parse(info.req.headers.cookie) : {};
+      this._prefs.sessionParser(info.req, (result, user, session, locals) => {
         info.req._user = user;
+        info.req._session = session;
+        info.req._locals = locals || {};
         done(result, 403, 'connection refused');
       });
     };
@@ -163,8 +170,8 @@ class Server {
         });
         callback(null);
         this._wss.on('connection', (ws, req) => {
-          // Make Socket instace
-          new Socket(this, ws, req._user)._start();
+          // Make Socket instance
+          new Socket(this, ws, req._user, req._session, req._locals)._start();
         });
         if (this._prefs.useHeartbeat) {
           setInterval(() => {
@@ -214,11 +221,15 @@ class Server {
     });
   }
 
-  publish(channelName, topic, msg) {
+  publish(channelName, topic, msg, callback) {
     const payload = {
       sys: plCodes.FEED, topic, msg, channel: channelName
     };
     this._scaler.publish(channelName, payload, (error, uid) => {
+      if (error) {
+        callback(error, null);
+        return;
+      }
       payload.uid = uid;
       if (this._channels[channelName]) {
         const jsonPl = JSON.stringify(payload);
@@ -226,6 +237,7 @@ class Server {
           socket._rawSend(jsonPl);
         });
       }
+      if (callback) callback(null, uid);
     });
   }
 

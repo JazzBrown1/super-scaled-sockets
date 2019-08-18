@@ -1,5 +1,4 @@
 
-
 const Slave = require('./slave');
 
 const defaults = {
@@ -70,4 +69,4 @@ const Master = function Master(scaler, prefs) {
   };
 };
 
-export default scaler => new Master(scaler);
+export default (scaler) => new Master(scaler);

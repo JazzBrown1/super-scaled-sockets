@@ -12,7 +12,7 @@ redisSSS.connect = (dataStore, connectionOptions, callback) => {
   const lastUpdates = {};
 
   const shouldIgnore = (id) => {
-    const _index = ignoreList.findIndex(_id => id === _id);
+    const _index = ignoreList.findIndex((_id) => id === _id);
     if (_index !== -1) {
       ignoreList.splice(_index, 1);
       return true;

@@ -7,7 +7,7 @@ const errorMessages = {
   }
 };
 
-const mongoSSS = table => ({
+const mongoSSS = (table) => ({
   save: (channel, data, callback) => {
     table.insertOne({ channel: channel, data: data }, (err, result) => {
       if (!err) {

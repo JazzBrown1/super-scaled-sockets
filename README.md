@@ -37,12 +37,14 @@ On nmp run the following command:
 ~~~~
 npm install <Directory of the super-scaled-sockets Lib>
 ~~~~
+[Download super-scaled-sockets (server)](https://github.com/JazzBrown1/super-scaled-sockets/archive/master.zip)
 
 #### Client
 On nmp run the following command:
 ~~~~
 npm install <Directory of the super-scaled-sockets-client Lib>
 ~~~~
+[Download super-scaled-sockets-client](https://github.com/JazzBrown1/super-scaled-sockets-client/archive/master.zip)
 
 ### Scaler
 

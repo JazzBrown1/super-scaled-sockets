@@ -15,12 +15,12 @@ class Channel {
   }
 
   _unsubscribe(socket) {
-    const _index = this.sockets.findIndex(_socket => _socket === socket);
+    const _index = this.sockets.findIndex((_socket) => _socket === socket);
     if (_index !== -1) this.sockets.splice(_index, 1);
   }
 
-  publish(topic, msg) {
-    this._server._publish(this.name, topic, msg);
+  publish(topic, msg, callback) {
+    this._server.publish(this.name, topic, msg, callback);
   }
 }
 

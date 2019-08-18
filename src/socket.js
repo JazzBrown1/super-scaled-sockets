@@ -14,7 +14,7 @@ const dummyResponse = {
  *  @hideconstructor
  */
 class Socket {
-  constructor(server, ws, user, session) {
+  constructor(server, ws, user, session, locals) {
     this._ws = ws;
     this._server = server;
     this._askListeners = {};
@@ -23,7 +23,7 @@ class Socket {
     this._onUnsubscribe = null;
     this._onClose = null;
     this.info = ws.info;
-    this.locals = {};
+    this.locals = locals;
     this.info = {
       subs: [],
       isAlive: true,
@@ -108,6 +108,17 @@ class Socket {
       result: {},
       records: []
     };
+    // work around for bug in async do all where an empty array should invoke done but doesn't
+    if (payload.subscriptions.length === 0) {
+      const _payload = {
+        sys: plCodes.SYNC,
+        result: response.result,
+        records: response.records,
+        id: payload.id
+      };
+      this._send(_payload);
+      return;
+    }
     const scaler = this._server._scaler;
     sssUtil.asyncDoAll(payload.subscriptions, (sub, i, done) => {
       if (sub.channel === this.info.user) {
@@ -231,8 +242,8 @@ class Socket {
     });
   }
 
-  publish(channelName, topic, msg) {
-    this._server._publishWithout(channelName, topic, msg, this._ws);
+  publish(channelName, topic, msg, callback) {
+    this._server._publishWithout(channelName, topic, msg, this._ws, callback);
   }
 
   boot(reason) {
@@ -244,7 +255,7 @@ class Socket {
   }
 
   isSubscribed(channelName) {
-    return Boolean(this.info.subs.find(sub => sub.name === channelName));
+    return Boolean(this.info.subs.find((sub) => sub.name === channelName));
   }
 
   onClose(callback) {
