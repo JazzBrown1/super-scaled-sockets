@@ -1,29 +1,40 @@
 {
   "name": "super-scaled-sockets",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "WebSockets, on a super scale",
-  "main": "src/superScaledSockets.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JazzBrown1/super-scaled-sockets.git"
+  },
+  "main": "dist/main.js",
+  "module": "dist/module.js",
   "directories": {
     "example": "examples"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c",
     "buildDocs": "node_modules/.bin/jsdoc -c \"jsdoc/docs-docdash-config.json\""
   },
   "author": "Jazz Brown",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "cookie": "^0.3.1",
-    "mongodb": "^3.2.4",
-    "redis": "^2.8.0",
+    "jazzy-utility": "^0.1.2",
     "ws": "^7.0.0"
   },
   "devDependencies": {
+    "rollup": "^1.20.1",
     "babel-eslint": "^10.0.0",
     "docdash": "^1.1.1",
     "eslint": "^6.1.0",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2",
-    "jsdoc": "^3.6.2"
+    "jsdoc": "^3.6.2",
+    "@babel/cli": "^7.5.5",
+    "@babel/core": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-cleanup": "^3.1.1",
+    "rollup-plugin-node-resolve": "^5.2.0"
   }
 }

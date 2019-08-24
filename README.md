@@ -58,7 +58,16 @@ RedisLabs: [https://redislabs.com/](https://redislabs.com/)
 
 Once you have set these up just take a note of the connection credentials which will be used to connect your scaler on the server.
 
+First install the scaler using npm:
 ~~~
+npm install sss-mongo-redis
+~~~
+
+And in your server code pass the credentials to the scaler.connect and that will return the scaler object. This should be passed to sss.client to create your client instance.
+~~~
+const sss = require('super-scaled-sockets');
+const mongoRedis = require('sss-mongo-redis');
+
 // mongo connection info all properties are required
 const mongoConnection = {
   uri: 'mongodb+srv://smartUsername:smartPassword@cluster0-abcd.zyx.mongodb.net/test?retryWrites=true',
@@ -73,12 +82,14 @@ const redisConnection = {
   port: 123456
 };
 
-sss.scaler.mongoRedis.connect(mongoConnection, redisConnection, (err, scaler) => {
+mongoRedis.connect(mongoConnection, redisConnection, (err, scaler) => {
   if (err) {
     console.log('Error establishing scaler connection');
     return;
   }
-  // ......
+  const client = sss.client(scaler, {})
+  client.connect((error) => {
+    // ......
 ~~~
 
 ### Adding to your nodeJs server app
@@ -87,6 +98,7 @@ When adding the Super Scaled sockets, you must ensure you have all of the creden
 
 ~~~~
 import sss from 'super-scaled-sockets';
+import mongoRedis from 'sss-mongo-redis';
 
 // We take the port to run our server instance on from the first argument in the node call in cl
 const port = process.argv[2];
@@ -109,7 +121,7 @@ const options = {
   port: port
 };
 
-sss.scaler.mongoRedis.connect(mongoConnection, redisConnection, (err, scaler) => {
+mongoRedis.connect(mongoConnection, redisConnection, (err, scaler) => {
   if (err) {
     console.log('Error establishing scaler connection');
     return;

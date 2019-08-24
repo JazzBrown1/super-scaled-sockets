@@ -1,6 +1,6 @@
-const plCodes = require('./plCodes');
+import plCodes from './plCodes';
 
-module.exports = (scaler, callback) => {
+export default function (scaler, callback) {
   const obj = {
     _scaler: scaler,
     publish: (channelName, topic, msg, _callback) => {
@@ -31,4 +31,4 @@ module.exports = (scaler, callback) => {
   };
   if (callback) callback(obj);
   return obj;
-};
+}

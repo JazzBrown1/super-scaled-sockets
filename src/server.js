@@ -1,10 +1,10 @@
 
+import plCodes from './plCodes';
+import Channel from './channel';
+import Socket from './socket';
+
 const cookie = require('cookie');
 const WebSocket = require('ws');
-
-const plCodes = require('./plCodes');
-const Channel = require('./channel');
-const Socket = require('./socket');
 
 const defaults = {
   sessionParser: false,
@@ -270,4 +270,4 @@ class Server {
   }
 }
 
-module.exports = Server;
+export default Server;

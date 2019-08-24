@@ -12,4 +12,4 @@ const plCodes = {
   BROADCAST: 11
 };
 
-module.exports = plCodes;
+export default plCodes;

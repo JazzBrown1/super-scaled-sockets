@@ -1,5 +1,5 @@
-const plCodes = require('./plCodes');
-const sssUtil = require('./sssUtil');
+import { asyncDoAll } from 'jazzy-utility';
+import plCodes from './plCodes';
 
 const errors = {
   unknownReqTopic: { name: 'Super Scaled Sockets Error', message: 'Unknown request topic sent from client' }
@@ -8,7 +8,6 @@ const errors = {
 const dummyResponse = {
   send: () => {}
 };
-
 
 /** Class Instance returned when a new client connects to the server
  *  @hideconstructor
@@ -120,7 +119,7 @@ class Socket {
       return;
     }
     const scaler = this._server._scaler;
-    sssUtil.asyncDoAll(payload.subscriptions, (sub, i, done) => {
+    asyncDoAll(payload.subscriptions, (sub, i, done) => {
       if (sub.channel === this.info.user) {
         scaler.isSynced(sub.channel, sub.lastUid, (err, res) => {
           if (err) {
@@ -278,4 +277,4 @@ class Socket {
   }
 }
 
-module.exports = Socket;
+export default Socket;
