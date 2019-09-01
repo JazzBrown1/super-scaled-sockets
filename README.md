@@ -55,7 +55,7 @@ This library is built on top of the WebSockets node protocol implemented by node
 #### Server
 On nmp run the following command:
 ~~~~
-npm install super-scaled-socket
+npm install super-scaled-sockets
 ~~~~
 
 And install the scaler: (more info below)
