@@ -1,10 +1,10 @@
 {
   "name": "super-scaled-sockets",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "WebSockets, on a super scale",
   "repository": {
-    "type":"git",
-    "url":"https://github.com/JazzBrown1/super-scaled-sockets.git"
+    "type": "git",
+    "url": "https://github.com/JazzBrown1/super-scaled-sockets.git"
   },
   "keywords": [
     "realtime",
@@ -15,7 +15,7 @@
     "sockets",
     "server"
   ],
-  "bugs":  {
+  "bugs": {
     "url": "https://github.com/JazzBrown1/super-scaled-sockets/issues",
     "email": "jazzbrown@tezle.com"
   },
