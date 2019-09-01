@@ -1,13 +1,31 @@
+<a name="intro"></a>
+
 # Super Scaled Sockets
+
+### Table of contents
+
+1. [ Introduction](#introduction)
+2. [ Installation](#getting-started)
+3. [ Scaler](#scaler)
+4. [ Adding to your app](#adding)
+5. [ Subscriptions](#subscriptions)
+6. [ Ask and Tell](#ask-and-tell)
+7. [ Session Parsing](#session-parser)
+8. [ Subscription Parsing](#subscription-parser)
+8. [ Resources](#resources)
+
+<a name="introduction"></a>
 
 ### What is Super Scaled Sockets?
 
-Super Scaled Sockets is a web sockets framework allowing developers to easily scale up using multiple websocket server instances to serve a high number of clients.
+Super Scaled Sockets allows developers to easily scale up using multiple websocket server instances to serve a high number of clients.
+
+Even if you do not envision a high number of users using your app, it is still recommended that you use multiple instances to serve your clients. This is so that if one of your instances falls over the others can manage the load while the instance is restarted.
 
 
 ### What do I need to scale my App?
 
-The server instances are connected by the scalar object. This is decoupled from the rest of the library as I wanted to allow the ability to use the library with different technologies. Currently I have developed only one scaler which works with a MongoDb and Redis Pub/Sub setup. But this should be easily copied and changed to support different technologies.
+The server instances are connected by the scalar. At the moment there is only one scaler developed which uses MongoDb and Redis. But this should be easily copied and changed to support different technologies.
 
 
 ### How do the server and client communicate?
@@ -28,6 +46,8 @@ Yes! Super Scaled Sockets has built in reconnection logic, so if a user disconne
 
 This library is built on top of the WebSockets node protocol implemented by node-ws.
 
+<a name="getting-started"></a>
+
 # Getting Started
 
 ### Installation
@@ -35,16 +55,21 @@ This library is built on top of the WebSockets node protocol implemented by node
 #### Server
 On nmp run the following command:
 ~~~~
-npm install <Directory of the super-scaled-sockets Lib>
+npm install super-scaled-socket
 ~~~~
-[Download super-scaled-sockets (server)](https://github.com/JazzBrown1/super-scaled-sockets/archive/master.zip)
+
+And install the scaler: (more info below)
+~~~~
+npm install sss-mongo-redis
+~~~~
 
 #### Client
 On nmp run the following command:
 ~~~~
-npm install <Directory of the super-scaled-sockets-client Lib>
+npm install super-scaled-sockets-client
 ~~~~
-[Download super-scaled-sockets-client](https://github.com/JazzBrown1/super-scaled-sockets-client/archive/master.zip)
+
+<a name="scaler"></a>
 
 ### Scaler
 
@@ -58,12 +83,8 @@ RedisLabs: [https://redislabs.com/](https://redislabs.com/)
 
 Once you have set these up just take a note of the connection credentials which will be used to connect your scaler on the server.
 
-First install the scaler using npm:
-~~~
-npm install sss-mongo-redis
-~~~
-
 And in your server code pass the credentials to the scaler.connect and that will return the scaler object. This should be passed to sss.client to create your client instance.
+
 ~~~
 const sss = require('super-scaled-sockets');
 const mongoRedis = require('sss-mongo-redis');
@@ -91,6 +112,8 @@ mongoRedis.connect(mongoConnection, redisConnection, (err, scaler) => {
   client.connect((error) => {
     // ......
 ~~~
+
+<a name="adding"></a>
 
 ### Adding to your nodeJs server app
 
@@ -153,6 +176,8 @@ client.connect((err) => {
   // .......
 ~~~~
 
+<a name="subscriptions"></a>
+
 ### Subscriptions
 
 Subscriptions are where the true power of super scaled sockets can be utilized. Any server instance can publish on a channel and any socket subscribed to that channel will receive that message. This allows apps to serve a very high number of clients allowing real time communication between them.
@@ -178,6 +203,8 @@ const publishSportArticle = (article) => {
   server.publish('sport', 'article', article);
 }
 ~~~
+
+<a name="ask-and-tell"></a>
 
 ### Ask & Tell Protocols
 
@@ -217,6 +244,8 @@ socket.onTell('likedMsg', (msg) => {
 });
 ~~~
 
+<a name="session-parser"></a>
+
 ### Session Parser
 
 The session parser allows you to add a security layer to your server and is called when any new client tries to make a connection. You can check cookies and origins in this function etc. You can also use this function to add a user id and/or a session ID so that SSS can make session and user subscriptions. Your session parser should be passed to the server object as in the example below. If a Session Parser is not set then all sessions are accepted and no user or session subscriptions are created.
@@ -237,36 +266,38 @@ server.connect((err) => {
   // .....
 ~~~
 
+<a name="subscription-parser"></a>
+
 ### Subscription Parser
 
 The Subscription Parser is called when a client makes a subscription request allowing you to add security to subscriptions. You can pass a query in the client request if information is needed from the client to parse the request (ex: password). If a Subscription Parser is not set then all subscription requests are accepted.
 
 ~~~
+// Array of roomKeys
+const roomKeys = ['Sport', 'Politics', 'Fashion'];
+// Password for the private room
 const privateRoomPw = '21sdf24dgFD1fd2df2';
-const subscriptionParser = (socket, channel, request, callback) => {
-  switch (channel) {
-    case 'general_chat':
-      callback(true);
-      break;
-    case 'sport':
-      callback(true);
-      break;
-    case 'fashion':
-      callback(true);
-      break;
-    case 'private':
-      callback(privateRoomPw === request);
-      break;
-    default:
-      callback(false);
-      break;
+// The subscription Parser function
+const subscriptionParser = (socket, channelName, request, done) => {
+  if (channelName === 'private') {
+    done(privateRoomPw === request);
+    return;
   }
+  // returns false if the room ket is unknown
+  done(roomKeys.includes(channelName));
 };
-const options = {
-  subscriptionParser
-  port: port
-};
+// Include Subscription Parser in your options
+const options = {subscriptionParser, port};
 const server = sss.server(scaler, options);
 server.connect((err) => {
   // .....
 ~~~
+
+<a name="resources"></a>
+
+## Resources
+
+* Documentation [[client](https://super-scaled-sockets.tezle.com/docs/client/)] [[server](https://super-scaled-sockets.tezle.com/docs/server/)]
+* Github [[client](https://github.com/JazzBrown1/super-scaled-sockets-client)] [[server](https://github.com/JazzBrown1/super-scaled-sockets)]
+* NPM [[client](https://www.npmjs.com/package/super-scaled-sockets-client)] [[server](https://www.npmjs.com/package/super-scaled-sockets)]
+* Issues [[client](https://github.com/JazzBrown1/super-scaled-sockets-client/issues)] [[server](https://github.com/JazzBrown1/super-scaled-sockets/issues)]

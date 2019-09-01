@@ -21,8 +21,25 @@ class Socket {
     this._onSubscribe = null;
     this._onUnsubscribe = null;
     this._onClose = null;
-    this.info = ws.info;
+    /**
+    * Locals object where you can assign local data relevant to the socket.
+    * @example
+    * server.onSocket((socket) => {
+    *   socket.locals.userName = getUserName(socket.info.user);
+    * });
+    */
     this.locals = locals;
+    /**
+    * Locals object where you can assign local data relevant to the socket.
+    * @property {Channel[]} subs Array of channel instances the socket is subscribed to.
+    * @property {Boolean} isAlive Is the socket connection alive
+    * @property {text} user The user channel Id if one was supplied in session parser.
+    * @property {text} session The session channel Id if one was supplied in session parser.
+    * @example
+    * server.onSocket((socket) => {
+    *   socket.locals.userName = getUserName(socket.info.user);
+    * });
+    */
     this.info = {
       subs: [],
       isAlive: true,
@@ -143,7 +160,6 @@ class Socket {
       } else {
         this._server._prefs.subscriptionParser(this, sub.channel, sub.query, (result) => {
           if (result) {
-            this._server._subscribe(this, sub.channel);
             scaler.isSynced(sub.channel, sub.lastUid, (err, res) => {
               if (err) {
                 console.log(err);
@@ -153,12 +169,15 @@ class Socket {
               }
               if (!res) {
                 scaler.getSince(sub.channel, sub.lastUid, (_err, _result) => {
+                  this._server._subscribe(this, sub.channel);
                   if (_err) console.log(_err);
+                  if (_result === null || _result.length === 0) console.log(`Error - empty result from scaler.getSince channel: ${sub.channel}, uid: ${sub.lastUid}`);
                   response.result[sub.channel] = true;
-                  response.records.concat(_result);
+                  response.records = response.records.concat(_result);
                   done();
                 });
               } else {
+                this._server._subscribe(this, sub.channel);
                 response.result[sub.channel] = true;
                 done();
               }
@@ -241,9 +260,36 @@ class Socket {
     });
   }
 
+  /**
+  * Publish a message to all clients subscribed to a channel. apart from this socket.
+  * @param {text} channelName - The channel to publish on.
+  * @param {text} topic - The topic which the listener will be listening for.
+  * @param {any} message - The message to deliver to the clients subscribed to the channel.
+  * @param {publishCallback} callback - Returns any error and the uid of the message sent.
+  * @example
+  * socket.onTell('channelMsg', (msg) = {
+  *   if(socket.isSubscribed(msg.channelName)) {
+  *     socket.publish('channelMsg', 'football', msg.msg, (err, uid) => {
+  *       msg.uid = uid;
+  *       someSaveUpdateFunction(msg);
+  *     });
+  *   }
+  * });
+  */
+
   publish(channelName, topic, msg, callback) {
-    this._server._publishWithout(channelName, topic, msg, this._ws, callback);
+    this._server._publishWithout(channelName, topic, msg, this._ws, (e, uid) => {
+      this._send({ sys: plCodes.UPDATESUB, channel: channelName, uid: uid });
+      if (callback) callback(e, uid);
+    });
   }
+
+  /**
+  * Called to disconnect a client.
+  * @param {text} reason - The channel to publish on.
+  * @example
+  * socket.boot('socket timed out');
+  */
 
   boot(reason) {
     const payload = {
@@ -253,21 +299,115 @@ class Socket {
     this._send(payload);
   }
 
+  /**
+  * Check whether a client is subscribed to a channel.
+  * @param {text} channelName - The channel name to check.
+  * @example
+  * socket.onTell('channelMsg', (msg) = {
+  *   if(socket.isSubscribed(msg.channelName)) {
+  *     socket.publish('channelMsg', 'football', msg.msg, (err, uid) => {
+  *       msg.uid = uid;
+  *       someSaveUpdateFunction(msg);
+  *     });
+  *   }
+  * });
+  */
+
   isSubscribed(channelName) {
     return Boolean(this.info.subs.find((sub) => sub.name === channelName));
   }
+
+  /**
+  * Callback function that is called when the socket closes.
+  *
+  * @callback onCloseCallback
+  */
+  /**
+  * Called when the socket is closed.
+  * @param {onCloseCallback} callback - The channel to publish on.
+  * @example
+  * socket.onClose(() = {
+  *   console.log('socket closed:' + socket.info.user);
+  * });
+  */
 
   onClose(callback) {
     this._onClose = callback;
   }
 
+  /**
+  * Callback function that is called when on ask request comes from the client.
+  *
+  * @callback onAskCallback
+  * @param {any} message - The message from the client.
+  * @param {response} response - The response object. Use response.send(<msg>) to respond.
+  */
+  /**
+  * Set the callback listener triggered when the client makes an ask request
+  * @param {text} topic - The topic to listen for.
+  * @param {onAskCallback} callback - The callback listener.
+  * @example
+  * // Server
+  * socket.onAsk('helloWorld', (msg, response) = {
+  *   response.send(msg + ' world'); // Ask requests must always respond!
+  * });
+  * // Client
+  * client.ask('helloWorld', 'hello', (err, response) => {
+  *   alert(err ? 'Error' : response);
+  * });
+  */
+
   onAsk(topic, callback) {
     this._askListeners[topic] = callback;
   }
 
+  /**
+  * Callback function that is called when on tell request comes from the client.
+  *
+  * @callback onTellCallback
+  * @param {any} message - The message from the client.
+  */
+  /**
+  * Set the callback listener triggered when the client makes an ask request
+  * @param {text} topic - The topic to listen for.
+  * @param {onTellCallback} callback - The callback listener.
+  * @example
+  * // Server
+  * socket.onTell('message', (msg, response) = {
+  *   if (socket.isSubscribed(msg.room) {
+  *     socket.publish(msg.room, 'message', msg.message);
+  *   }
+  * });
+  * // Client
+  * const sendMessage = (chatRoom, message) => {
+  * const msg = {room: chatRoom, message: message};
+  *   client.tell('message', msg, (err) => {
+  *     if(err) alert(err);
+  *     else addMessage(msg);
+  *   });
+  * }
+  * // .....
+  * subscription.on('message' (msg) => {
+  *   addMessage(msg);
+  * });
+  */
+
   onTell(topic, callback) {
     this._tellListeners[topic] = callback;
   }
+
+  /**
+  * Make a tell call to the client.
+  * @param {text} topic - The topic for the tell call.
+  * @param {any} message - The callback listener.
+  * @example
+  * // Server
+  * socket.tell('updateToken', aNewToken);
+  * // Client
+  * client.onTell('updateToken', (msg) => {
+  *   someSessionLib.newToken(msg);
+  * });
+  */
 
   tell(topic, msg) {
     const payload = {

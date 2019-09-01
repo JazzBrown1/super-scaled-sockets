@@ -13,7 +13,8 @@ const plCodes = {
   FEED: 8,
   BOOT: 9,
   BOOTCHANNEL: 10,
-  BROADCAST: 11
+  BROADCAST: 11,
+  UPDATESUB: 12
 };
 
 /** Class Instance that represents an open subscription channel on the server instance
@@ -23,8 +24,19 @@ const plCodes = {
 class Channel {
   constructor(server, firstSocket, name) {
     this._server = server;
+    /**
+    * Array of sockets subscribed to the channel.
+    */
     this.sockets = [firstSocket];
+    /**
+    * Locals object where you can assign local data relevant to the channel.
+    * @example
+    * channel.locals.userId = someUserId;
+    */
     this.locals = {};
+    /**
+    * The channel name.
+    */
     this.name = name;
   }
 
@@ -36,6 +48,29 @@ class Channel {
     const _index = this.sockets.findIndex((_socket) => _socket === socket);
     if (_index !== -1) this.sockets.splice(_index, 1);
   }
+
+  /**
+  * Callback function that is called after you publish to a channel.
+  *
+  * @callback publishCallback
+  * @param {errorObject} error If there is an error an error object will return, otherwise null.
+  * @param {text} uid This will return the uid assigned to the message by the scaler.
+  */
+  /**
+  * Publish a message to all clients subscribed to a channel.
+  * @param {text} topic - The topic which the listener will be listening for.
+  * @param {any} message - The message to deliver to the clients subscribed to the channel.
+  * @param {publishCallback} callback - Returns any error and the uid of the message sent.
+  * @example
+  * const newsJson = {
+  *   title: 'someTitle',
+  *   body: 'someInfo'
+  * };
+  * channel.publish('football', newsJson, (err, uid) => {
+  *   newsJson.uid = uid;
+  *   someSaveUpdateFunction(newsJson);
+  * });
+  */
 
   publish(topic, msg, callback) {
     this._server.publish(this.name, topic, msg, callback);
@@ -62,8 +97,25 @@ class Socket {
     this._onSubscribe = null;
     this._onUnsubscribe = null;
     this._onClose = null;
-    this.info = ws.info;
+    /**
+    * Locals object where you can assign local data relevant to the socket.
+    * @example
+    * server.onSocket((socket) => {
+    *   socket.locals.userName = getUserName(socket.info.user);
+    * });
+    */
     this.locals = locals;
+    /**
+    * Locals object where you can assign local data relevant to the socket.
+    * @property {Channel[]} subs Array of channel instances the socket is subscribed to.
+    * @property {Boolean} isAlive Is the socket connection alive
+    * @property {text} user The user channel Id if one was supplied in session parser.
+    * @property {text} session The session channel Id if one was supplied in session parser.
+    * @example
+    * server.onSocket((socket) => {
+    *   socket.locals.userName = getUserName(socket.info.user);
+    * });
+    */
     this.info = {
       subs: [],
       isAlive: true,
@@ -173,6 +225,7 @@ class Socket {
             scaler.getSince(sub.channel, sub.lastUid, (_err, _result) => {
               if (_err) console.log(_err);
               response.result[sub.channel] = true;
+              response.records.concat(_result);
               done();
             });
           } else {
@@ -183,7 +236,6 @@ class Socket {
       } else {
         this._server._prefs.subscriptionParser(this, sub.channel, sub.query, (result) => {
           if (result) {
-            this._server._subscribe(this, sub.channel);
             scaler.isSynced(sub.channel, sub.lastUid, (err, res) => {
               if (err) {
                 console.log(err);
@@ -193,11 +245,15 @@ class Socket {
               }
               if (!res) {
                 scaler.getSince(sub.channel, sub.lastUid, (_err, _result) => {
+                  this._server._subscribe(this, sub.channel);
                   if (_err) console.log(_err);
+                  if (_result === null || _result.length === 0) console.log(`Error - empty result from scaler.getSince channel: ${sub.channel}, uid: ${sub.lastUid}`);
                   response.result[sub.channel] = true;
+                  response.records = response.records.concat(_result);
                   done();
                 });
               } else {
+                this._server._subscribe(this, sub.channel);
                 response.result[sub.channel] = true;
                 done();
               }
@@ -280,9 +336,36 @@ class Socket {
     });
   }
 
+  /**
+  * Publish a message to all clients subscribed to a channel. apart from this socket.
+  * @param {text} channelName - The channel to publish on.
+  * @param {text} topic - The topic which the listener will be listening for.
+  * @param {any} message - The message to deliver to the clients subscribed to the channel.
+  * @param {publishCallback} callback - Returns any error and the uid of the message sent.
+  * @example
+  * socket.onTell('channelMsg', (msg) = {
+  *   if(socket.isSubscribed(msg.channelName)) {
+  *     socket.publish('channelMsg', 'football', msg.msg, (err, uid) => {
+  *       msg.uid = uid;
+  *       someSaveUpdateFunction(msg);
+  *     });
+  *   }
+  * });
+  */
+
   publish(channelName, topic, msg, callback) {
-    this._server._publishWithout(channelName, topic, msg, this._ws, callback);
+    this._server._publishWithout(channelName, topic, msg, this._ws, (e, uid) => {
+      this._send({ sys: plCodes.UPDATESUB, channel: channelName, uid: uid });
+      if (callback) callback(e, uid);
+    });
   }
+
+  /**
+  * Called to disconnect a client.
+  * @param {text} reason - The channel to publish on.
+  * @example
+  * socket.boot('socket timed out');
+  */
 
   boot(reason) {
     const payload = {
@@ -292,21 +375,115 @@ class Socket {
     this._send(payload);
   }
 
+  /**
+  * Check whether a client is subscribed to a channel.
+  * @param {text} channelName - The channel name to check.
+  * @example
+  * socket.onTell('channelMsg', (msg) = {
+  *   if(socket.isSubscribed(msg.channelName)) {
+  *     socket.publish('channelMsg', 'football', msg.msg, (err, uid) => {
+  *       msg.uid = uid;
+  *       someSaveUpdateFunction(msg);
+  *     });
+  *   }
+  * });
+  */
+
   isSubscribed(channelName) {
     return Boolean(this.info.subs.find((sub) => sub.name === channelName));
   }
+
+  /**
+  * Callback function that is called when the socket closes.
+  *
+  * @callback onCloseCallback
+  */
+  /**
+  * Called when the socket is closed.
+  * @param {onCloseCallback} callback - The channel to publish on.
+  * @example
+  * socket.onClose(() = {
+  *   console.log('socket closed:' + socket.info.user);
+  * });
+  */
 
   onClose(callback) {
     this._onClose = callback;
   }
 
+  /**
+  * Callback function that is called when on ask request comes from the client.
+  *
+  * @callback onAskCallback
+  * @param {any} message - The message from the client.
+  * @param {response} response - The response object. Use response.send(<msg>) to respond.
+  */
+  /**
+  * Set the callback listener triggered when the client makes an ask request
+  * @param {text} topic - The topic to listen for.
+  * @param {onAskCallback} callback - The callback listener.
+  * @example
+  * // Server
+  * socket.onAsk('helloWorld', (msg, response) = {
+  *   response.send(msg + ' world'); // Ask requests must always respond!
+  * });
+  * // Client
+  * client.ask('helloWorld', 'hello', (err, response) => {
+  *   alert(err ? 'Error' : response);
+  * });
+  */
+
   onAsk(topic, callback) {
     this._askListeners[topic] = callback;
   }
 
+  /**
+  * Callback function that is called when on tell request comes from the client.
+  *
+  * @callback onTellCallback
+  * @param {any} message - The message from the client.
+  */
+  /**
+  * Set the callback listener triggered when the client makes an ask request
+  * @param {text} topic - The topic to listen for.
+  * @param {onTellCallback} callback - The callback listener.
+  * @example
+  * // Server
+  * socket.onTell('message', (msg, response) = {
+  *   if (socket.isSubscribed(msg.room) {
+  *     socket.publish(msg.room, 'message', msg.message);
+  *   }
+  * });
+  * // Client
+  * const sendMessage = (chatRoom, message) => {
+  * const msg = {room: chatRoom, message: message};
+  *   client.tell('message', msg, (err) => {
+  *     if(err) alert(err);
+  *     else addMessage(msg);
+  *   });
+  * }
+  * // .....
+  * subscription.on('message' (msg) => {
+  *   addMessage(msg);
+  * });
+  */
+
   onTell(topic, callback) {
     this._tellListeners[topic] = callback;
   }
+
+  /**
+  * Make a tell call to the client.
+  * @param {text} topic - The topic for the tell call.
+  * @param {any} message - The callback listener.
+  * @example
+  * // Server
+  * socket.tell('updateToken', aNewToken);
+  * // Client
+  * client.onTell('updateToken', (msg) => {
+  *   someSessionLib.newToken(msg);
+  * });
+  */
 
   tell(topic, msg) {
     const payload = {
@@ -326,8 +503,8 @@ const defaults = {
   hbInterval: 30000,
   hbThreshold: 2500,
   port: 443,
-  safeMofe: false, // to be deved
-  isSlave: false, // to be deved
+  safeMode: false, // to be developed
+  isSlave: false, // to be developed
 };
 
 const applyPrefs = (prefs) => {
@@ -341,10 +518,16 @@ const applyPrefs = (prefs) => {
 
 /** Class Instance returned by the server() call in the super-scaled-sockets module
  *  @hideconstructor
- * @memberof super-scaled-sockets
  */
 class Server {
   constructor(scaler, prefs) {
+    /**
+    * Locals object where you can assign local data relevant to the server.
+    * @example
+    * server.onSubscribe((socket, channel) => {
+    *   server.locals.lastSubscriptionTime = Date.now();
+    * });
+    */
     this.locals = {};
     this._scaler = scaler;
     this._prefs = applyPrefs(prefs);
@@ -363,13 +546,16 @@ class Server {
       this._channels[channelName] = channel;
       socket.info.subs.push(channel);
       this._scaler.subscribe(channelName);
-      if (this._onChannelOpen) this._onChannelOpen(channel);
-      if (this._onSubscribe) this._onSubscribe(socket, channel);
-      if (_callback) {
+      if (_callback) { // Get  uid before calling listeners so new uids are not included for syncing
         this._scaler.getLastId(channelName, (err, uid) => {
+          if (this._onChannelOpen) this._onChannelOpen(channel);
+          if (this._onSubscribe) this._onSubscribe(socket, channel);
           _callback(err, uid, channel);
         });
+        return;
       }
+      if (this._onChannelOpen) this._onChannelOpen(channel);
+      if (this._onSubscribe) this._onSubscribe(socket, channel);
     } else {
       this._channels[channelName].sockets.push(socket);
       socket.info.subs.push(this._channels[channelName]);
@@ -440,6 +626,24 @@ class Server {
     });
   }
 
+  /**
+  * Callback function that is called after a connection has been established.
+  *
+  * @callback connectCallback
+  * @param {errorObject} error If there is an error an error object will return, otherwise null.
+  */
+  /**
+  * Connect to the server.
+  * @param {connectCallback} callback - Callbacks with an error if unable to connect.
+  * @example
+  * server.connect((err) => {
+  *   if (err) {
+  *     // handle the error
+  *     return;
+  *   }
+  *   // ........
+  */
+
   connect(callback) {
     const verifyClient = (info, done) => {
       info.req.cookies = info.req.headers.cookie ? cookie.parse(info.req.headers.cookie) : {};
@@ -502,13 +706,39 @@ class Server {
     });
   }
 
+  /**
+  * Callback function that is called after a connection request is made to the server.
+  *
+  * @callback onSocketCallback
+  * @param {Socket} socket Returns a socket instance representing the connected client.
+  */
+  /**
+  * Set a listener for when a client connects to the server.
+  * @param {onSocketCallback} callback - Returns a socket instance representing the connected client.
+  * @example
+  * client.onSocket((socket) => {
+  *   socket.onAsk((msg, response) => {
+  *     //...
+  */
+
   onSocket(callback) {
     this._onSocket = callback;
   }
 
+
+  /* Future dev
   onPublish(callback) {
     this._onPublish = callback;
   }
+  */
+
+  /**
+  *Broadcast a message to all clients connected to all server instances.
+  * @param {text} topic - The topic which the listener will be listening for.
+  * @param {any} message - The message to deliver to the client.
+  * @example
+  * server.broadcast('time', Date.now());
+  */
 
   broadcast(topic, msg) {
     const payload = {
@@ -533,6 +763,30 @@ class Server {
       }
     });
   }
+
+  /**
+  * Callback function that is called after you publish to a channel.
+  *
+  * @callback publishCallback
+  * @param {errorObject} error If there is an error an error object will return, otherwise null.
+  * @param {text} uid This will return the uid assigned to the message by the scaler.
+  */
+  /**
+  * Publish a message to all clients subscribed to a channel.
+  * @param {text} channelName - The channel to publish on.
+  * @param {text} topic - The topic which the listener will be listening for.
+  * @param {any} message - The message to deliver to the clients subscribed to the channel.
+  * @param {publishCallback} callback - Returns any error and the uid of the message sent.
+  * @example
+  * const newsJson = {
+  *   title: 'someTitle',
+  *   body: 'someInfo'
+  * };
+  * server.publish('sports', 'football', newsJson, (err, uid) => {
+  *   newsJson.uid = uid;
+  *   someSaveUpdateFunction(newsJson);
+  * })
+  */
 
   publish(channelName, topic, msg, callback) {
     const payload = {
@@ -560,23 +814,93 @@ class Server {
     });
   }
 
+  /**
+  * Callback function that is called when a channel is opening on the server instance.
+  *
+  * @callback onChannelOpenCallback
+  * @param {Channel} channel Returns a channel instance representing a channel opening on the server instance.
+  */
+  /**
+  * Set a listener for when a channel is opening on the server instance.
+  * @param {onChannelOpenCallback} callback - Returns a socket instance representing the opening channel.
+  * @example
+  * client.onChannelOpen((channel) => {
+  *   channel.locals.info = someGetChannelInfoFunction(channel.name);
+  * });
+  */
+
   onChannelOpen(callback) {
     this._onChannelOpen = callback;
   }
+
+  /**
+  * Callback function that is called when a channel is closing on the server instance.
+  *
+  * @callback onChannelCloseCallback
+  * @param {Channel} channel Returns a channel instance representing a channel closing on the server instance.
+  */
+  /**
+  * Set a listener for when a channel is close on the server instance.
+  * @param {onChannelCloseCallback} callback - Returns a socket instance representing the closing channel.
+  * @example
+  * client.onChannelClose((channel) => {
+  *   console.log(`channel: ${channel.name} has closed.`);
+  * });
+  */
 
   onChannelClose(callback) {
     this._onChannelClose = callback;
   }
 
+  /**
+  * Callback function that is called when a client subscribes to a channel.
+  *
+  * @callback onSubscribeCallback
+  * @param {Socket} socket Returns a socket instance representing the channel that has subscribed to the channel.
+  * @param {Channel} channel Returns a channel instance representing the channel that is being subscribed to.
+  */
+  /**
+  * Set a listener for when a channel is subscribed to.
+  * @param {onSubscribeCallback} callback - Returns a socket instance and channel instance.
+  * @example
+  * client.onSubscribe((socket, channel) => {
+  *   channel.locals.userNames.push(socket.locals.userName);
+  * });
+  */
+
   onSubscribe(callback) {
     this._onSubscribe = callback;
   }
+
+  /**
+  * Callback function that is called when a client unsubscribes from a channel.
+  *
+  * @callback onUnsubscribeCallback
+  * @param {Socket} socket Returns a socket instance representing the channel that has unsubscribed from the channel.
+  * @param {Channel} channel Returns a channel instance representing the channel that is being unsubscribed from.
+  */
+  /**
+  * Set a listener for when a channel is unsubscribed from.
+  * @param {onUnsubscribeCallback} callback - Returns a socket instance and channel instance.
+  * @example
+  * client.onSubscribe((socket, channel) => {
+  *   channel.locals.userNames.push(socket.locals.userName);
+  * });
+  */
 
   onUnsubscribe(callback) {
     this._onUnsubscribe = callback;
   }
 
+  /**
+  *Closes the server instance
+  * @param {text} reason - The text reason you are closing the server. This is passed to the clients.
+  * @example
+  * server.close('rescaling');
+  */
+
   close(reason, update) {
+    // needs improving
     this._broadcastSend({ sys: plCodes.CLOSE, reason: reason || 'none', update: update || { reconnect: true, wait: 5000 } });
     this._connection.close();
     this._scaler.close();
@@ -586,7 +910,7 @@ class Server {
 function publisher (scaler, callback) {
   const obj = {
     _scaler: scaler,
-    publish: (channelName, topic, msg, _callback) => {
+    publish: function publish(channelName, topic, msg, _callback) {
       const payload = {
         sys: plCodes.FEED, topic, msg, channel: channelName
       };
@@ -610,24 +934,93 @@ function publisher (scaler, callback) {
       this._scaler.publish(channelName, payload, (err, uid) => {
         if (_callback) _callback(err, uid);
       });
+    },
+    close: function close() {
+      this._scaler.close();
     }
   };
   if (callback) callback(obj);
   return obj;
 }
 
+/** Root module for the library called with import/require sss from 'super-scaled-sockets-client'
+ * @example
+ * // ES6 with Bundler
+ * import sss from 'super-scaled-sockets';
+ * // CJS
+ * const sss = require('super-scaled-sockets');
+ * @module super-scaled-sockets  */
+
+/**
+* Function that is used to authorized a clients connection to the server.<br/>
+* Authorization is complete by calling done() with a boolean result as the first argument. The 2nd argument is a userId to open a user subscription. The third is sessionId to open a session subscription and the fourth is a locals object to be passed to the Socket class locals.
+* @callback sessionParser
+* @global
+* @param {object} request The http request from the client.
+* @param {function} done The function to call once authorization is complete. This must be called.
+* @example
+* const sessionParser = (request, done) => {
+*   const token = request.cookies.token;
+*   mongoSessions.validateToken(token, (__err, result) => {
+*   const locals = {
+*     userName: result.userName,
+*     firstName: result.firstName
+*   };
+*     done(result.isLogged, result.userId, result.sessionId, locals);
+*   });
+* }
+* const options = {
+*   sessionParser, port
+* };
+* const server = sss.server(scaler, options);
+* server.connect((err) => {
+*   // .....
+*/
+
+/**
+* Function that is used to authorized a clients subscription to a channel.<br/>
+* Call done(true/false) to authorize or reject the request.
+* @callback subscriptionParser
+* @global
+* @param {Socket} socket Socket instance representing the channel that has subscribed to the channel.
+* @param {text} channel The name of the channel the client is trying to subscribe to.
+* @param {any} request The request in the clients subscription request.
+* @param {function} done The function to call once authorization is complete. . This must be called.
+* @example
+* // password for the private room
+* const privateRoomPw = '21sdf24dgFD1fd2df2';
+* // The subscription Parser function
+* const subscriptionParser = (socket, channelName, request, done) => {
+*   if (channelName === 'private') {
+*     done(privateRoomPw === request);
+*     return;
+*   }
+*   // returns false if the room ket is unknown
+*   done(roomKeys.includes(channelName));
+* };
+*/
+
 /** Function called to create a server instance
 * @function
+* @static
 * @param {scaler} scaler - The scaler object
 * @param {object} options - An options object
-* @param {boolean} [options.param1=false] - Param 1.
-* @param {number} [options.param2=true] - Param 2.
+* @param {sessionParser} [options.sessionParser="All Requests Accepted"] - Function that is used to authorized a clients connection to the server.
+* @param {subscriptionParser} [options.subscriptionParser="All Requests Accepted"] -Function that is used to authorized a clients subscription to a channel.
+* @param {boolean} [options.useHeartbeat=30000] - Whether to use a heartbeat to keep an accurate account of whether users have disconnected.
+* @param {number} [options.hbInterval=30000] - The interval at which each client should be sent a heartbeat.
+* @param {number} [options.hbThreshold=2500] - The threshold allowed for client-server latency.
+* @param {number} [options.port=443] - The port the instance should listen for connections on.
 * @return {Server} - A server instance
 * @example
-* const sss = require('super-scaled-sockets');
-* // .........
+* const options = {
+*  useHeartbeat: true
+* }
+* const server = server(scaler, options);
+* server.connect( (error) => {
+*   // .........
 */
-const server = (_scaler, prefs) => new Server(_scaler, prefs);
+const server = (_scaler, options) => new Server(_scaler, options);
 
 var indexCjs = {
   server, publisher

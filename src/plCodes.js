@@ -9,7 +9,8 @@ const plCodes = {
   FEED: 8,
   BOOT: 9,
   BOOTCHANNEL: 10,
-  BROADCAST: 11
+  BROADCAST: 11,
+  UPDATESUB: 12
 };
 
 export default plCodes;

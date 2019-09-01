@@ -3,7 +3,7 @@
         "allowUnknownTags": false
     },
     "source": {
-        "include": "./src",
+        "include": ["./src"],
         "includePattern": ".js$",
         "excludePattern": "(node_modules/|docs)"
     },
@@ -11,7 +11,7 @@
         "plugins/markdown"
     ],
     "opts": {
-        "template": "node_modules/docdash",
+        "template": "./jsdoc/docdash",
         "encoding": "utf8",
         "destination": "jsdoc/out",
         "recurse": true,
@@ -23,6 +23,25 @@
       "monospaceLinks": false
   },
   "docdash": {
+    "menu":{
+      "Getting Started":{
+            "href":"index.html#getting-started",
+            "class":"menu-item",
+            "id":"website_link"
+        },
+        "Client Docs":{
+              "href":"https://super-scaled-sockets.tezle.com/docs/client",
+              "target":"_blank",
+              "class":"menu-item",
+              "id":"website_link"
+          },
+      "Github":{
+          "href":"https://github.com/JazzBrown1/super-scaled-sockets",
+          "target":"_blank",
+          "class":"menu-item",
+          "id":"forum_link"
+      }
+    },
     "static":true,
     "search": true,
     "sectionOrder": [

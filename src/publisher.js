@@ -3,7 +3,7 @@ import plCodes from './plCodes';
 export default function (scaler, callback) {
   const obj = {
     _scaler: scaler,
-    publish: (channelName, topic, msg, _callback) => {
+    publish: function publish(channelName, topic, msg, _callback) {
       const payload = {
         sys: plCodes.FEED, topic, msg, channel: channelName
       };
