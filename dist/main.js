@@ -934,9 +934,6 @@ function publisher (scaler, callback) {
       this._scaler.publish(channelName, payload, (err, uid) => {
         if (_callback) _callback(err, uid);
       });
-    },
-    close: function close() {
-      this._scaler.close();
     }
   };
   if (callback) callback(obj);
