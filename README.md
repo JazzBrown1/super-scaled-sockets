@@ -1,5 +1,7 @@
 <a name="intro"></a>
 
+# ARCHIVED - NO LONGER SUPPORTED!
+
 # Super Scaled Sockets
 
 ### Table of contents
